@@ -16,7 +16,7 @@ from sharktank.types import *
 
 # TODO: Should be using a base class with the protocol supported.
 from ..models.llama.llama import LlamaModelConfig, PagedLlamaModelV1
-
+from ..utils.debugging import trace_tensor
 
 def main():
     from ..utils import cli
@@ -135,7 +135,12 @@ def main():
             input_mask = model.input_mask(
                 seq_lens, seq_block_ids.shape[1] * model.cache.block_seq_stride
             )
+            print("@fxb.export_program -> decode_bs")
             attention_mask = model.decode_attention_mask(input_mask)
+            trace_tensor("decode.token_ids", tokens)
+            trace_tensor("decode.start_positions", start_positions)
+            trace_tensor("decode.seq_block_ids", seq_block_ids)
+            trace_tensor("decode.attention_mask", attention_mask)
             logits = model.decode(
                 tokens,
                 attention_mask=attention_mask,
@@ -143,6 +148,7 @@ def main():
                 seq_block_ids=seq_block_ids,
                 cache_state=cache_state,
             )
+            trace_tensor("decode.logits", logits)
             return logits
 
     bsizes = []
@@ -155,8 +161,8 @@ def main():
     config = generate_params_json(hp, bsizes, bsizes)
     print("GENERATED!")
 
-    for name, ep in fxb.programs.items():
-        print(f"EXPORT {name}:\n{ep}")
+    # for name, ep in fxb.programs.items():
+    #     print(f"EXPORT {name}:\n{ep}")
 
     print("Exporting")
     output = export(fxb)

@@ -112,6 +112,7 @@ class PagedLlamaModelV1(BaseCausalLMModel):
         self.hp = hp
         self.cache = config.create_kv_cache()
         self.activation_dtype = config.activation_dtype
+        print("  llama.py, __init__, adding modules, attention blocks, etc.")
         self.add_module(
             "token_embedding",
             TokenEmbeddingLayer(theta("token_embd"), dtype=config.activation_dtype),
@@ -206,6 +207,7 @@ class PagedLlamaModelV1(BaseCausalLMModel):
         embedding_batch_mask = self.attention_embedding.compute_batch_mask(
             start_positions, batch_seq_len=1
         )
+        print("  llama.py, decode(), calling trace_tensor")
         self.trace_tensor("llama.embedding_batch_mask", embedding_batch_mask)
 
         # Allocate per-block temporary K/V tensors. These temporaries hold

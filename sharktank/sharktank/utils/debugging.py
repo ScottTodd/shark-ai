@@ -10,6 +10,7 @@ from dataclasses import dataclass
 import re
 import os
 from typing import Sequence
+import shark_turbine.ops.iree as iree_ops
 
 import torch
 
@@ -70,6 +71,7 @@ flags = DebugFlags.parse_from_env()
 
 def trace_tensor(key: str, t: torch.Tensor, *, values: bool = True):
     if not flags.enable_tensor_trace:
+        print(f"::: tracing not enabled")
         return
     values_repr = repr(t) if values else "...elided..."
     print(f"::: TRACE {key}({list(t.shape), t.dtype}) =\n{values_repr}")
