@@ -4,7 +4,7 @@
 # See https://llvm.org/LICENSE.txt for license information.
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
-"""Inference support for the PagedLLMV1 protocol of models."""
+"""Export support for the PagedLLMV1 protocol of models."""
 
 import json
 import torch
@@ -38,7 +38,10 @@ def main():
     dataset = cli.get_input_dataset(args)
 
     hp = configs.LlamaHParams.from_gguf_props(dataset.properties)
-    model = PagedLlamaModelV1(dataset.root_theta, LlamaModelConfig(hp))
+    llama_config = LlamaModelConfig(hp)
+    # TODO(scotttodd): switch cache type based on batch sizes (only 1 --> direct, else paged)
+    llama_config.kv_cache_type = "direct"
+    model = PagedLlamaModelV1(dataset.root_theta, llama_config)
 
     def generate_params_json(hp, prefill_bs: list[int], decode_bs: list[int]):
         return {
@@ -65,15 +68,29 @@ def main():
         tokens = torch.empty(bs, 64, dtype=torch.int64)
         seq_lens = torch.empty(bs, dtype=torch.int64)
         seq_block_ids = torch.empty(bs, 4, dtype=torch.int64)
-        cache_state = model.cache.allocate(128)
         block_dim = torch.export.Dim("block", max=2047 // 16)
         sl_dim = 16 * block_dim
-        page_dim = torch.export.Dim("page")
+
+        if model.config.kv_cache_type == "paged":
+            cache_state = model.cache.allocate(page_count=128)
+            # Paged cache dimensions:
+            #   [page_count, page_slab_flat_dim]
+            page_dim = torch.export.Dim("page")
+            cache_state_dynamic_shapes = [{0: page_dim}]
+        elif model.config.kv_cache_type == "direct":
+            cache_state = model.cache.allocate(bs=1)
+            # Direct cache dimensions:
+            #   2 * transformer_block_count of...
+            #   [bs, seq_length, attn_head_count, attn_head_dim]
+            cache_state_dynamic_shapes = [{} for _ in range(0, 2 * hp.block_count)]
+        else:
+            raise NotImplementedError(f"Unsupported KV cache type: {type(model.cache)}")
+
         dynamic_shapes = {
             "tokens": {1: sl_dim},
             "seq_lens": {},
             "seq_block_ids": {1: block_dim},
-            "cache_state": [{0: page_dim}],
+            "cache_state": cache_state_dynamic_shapes,
         }
 
         print(f"Exporting prefill_bs{bs}")
@@ -100,15 +117,29 @@ def main():
         seq_lens = torch.ones(bs, dtype=torch.int64)
         start_positions = torch.ones(bs, dtype=torch.int64)
         seq_block_ids = torch.zeros(bs, 4, dtype=torch.int64)
-        cache_state = model.cache.allocate(128)
         block_dim = torch.export.Dim("block", max=2047 // 16)
-        page_dim = torch.export.Dim("page")
+
+        if model.config.kv_cache_type == "paged":
+            cache_state = model.cache.allocate(page_count=128)
+            # Paged cache dimensions:
+            #   [page_count, page_slab_flat_dim]
+            page_dim = torch.export.Dim("page")
+            cache_state_dynamic_shapes = [{0: page_dim}]
+        elif model.config.kv_cache_type == "direct":
+            cache_state = model.cache.allocate(bs=1)
+            # Direct cache dimensions:
+            #   2 * transformer_block_count of...
+            #   [bs, seq_length, attn_head_count, attn_head_dim]
+            cache_state_dynamic_shapes = [{} for _ in range(0, 2 * hp.block_count)]
+        else:
+            raise NotImplementedError(f"Unsupported KV cache type: {type(model.cache)}")
+
         dynamic_shapes = {
             "tokens": {},
             "seq_lens": {},
             "start_positions": {},
             "seq_block_ids": {1: block_dim},
-            "cache_state": [{0: page_dim}],
+            "cache_state": cache_state_dynamic_shapes,
         }
 
         print(f"Exporting decode_bs{bs}")
@@ -147,7 +178,9 @@ def main():
 
     bsizes = []
     for bs in [
-        4,
+        1,
+        # 2,
+        # 4,
     ]:
         generate_batch_prefill(bs)
         generate_batch_decode(bs)
