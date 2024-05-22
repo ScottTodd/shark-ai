@@ -47,6 +47,9 @@ class TorchGenerator:
         return self.model.cache.block_seq_stride
 
     def begin_batch(self, prompts: list[str]):
+        # print(
+        #     f"self.model.cache.pad_sequence_stride: {self.model.cache.pad_sequence_stride}"
+        # )
         token_ids, seq_lens = self.tokenizer.encode(
             prompts, pad_to_multiple_of=self.model.cache.pad_sequence_stride
         )

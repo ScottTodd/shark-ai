@@ -61,6 +61,7 @@ class InferenceTokenizer(ABC):
 
 
 def load_tokenizer(*posargs, tokenizer_type: str = "transformers", **kwargs):
+    print(f"load_tokenizer, type: {tokenizer_type}")
     if tokenizer_type == "transformers":
         return _create_transformers_tokenizer(*posargs, **kwargs)
 
@@ -68,6 +69,8 @@ def load_tokenizer(*posargs, tokenizer_type: str = "transformers", **kwargs):
 def _create_transformers_tokenizer(model_path: os.PathLike) -> InferenceTokenizer:
     from transformers import AutoTokenizer
     from transformers.tokenization_utils import PaddingStrategy, TruncationStrategy
+
+    print(f"_create_transformers_tokenizer, model_path: {model_path}")
 
     t = AutoTokenizer.from_pretrained(model_path, legacy=False)
     t.add_special_tokens({"pad_token": "0"})

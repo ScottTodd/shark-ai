@@ -198,6 +198,9 @@ class _Sequence:
         self.attn_blocks_needed = new_size
         return new_size - old_size
 
+    def __str__(self):
+        return str({slot: getattr(self, slot) for slot in self.__slots__})
+
 
 class GenerateState(BatchGenerateState):
     __slots__ = [
@@ -298,6 +301,12 @@ class GenerateState(BatchGenerateState):
         sequences = self._sequences
         work_queue = self._batch_queue
 
+        logger.info("prefill")
+        logger.info(f"  bs: {bs}")
+        logger.info(f"  max_seq_length: {max_seq_length}")
+        logger.info(f"  max_attn_blocks_length: {max_attn_blocks_length}")
+        logger.info(f"  sequences: {sequences}")
+
         # Record a command buffer for performing h2d transfers.
         cb = HalCommandBuffer(hc.session.device)
 
@@ -335,6 +344,12 @@ class GenerateState(BatchGenerateState):
             prefill_seq_lens_host[i] = row_seq_len
             for j in range(len(seq.attn_blocks)):
                 prefill_attn_block_indices_host[i, j] = attn_blocks[j].index
+
+        logger.info(f"  prefill_tokens_host: {prefill_tokens_host}")
+        logger.info(f"  prefill_seq_lens_host: {prefill_seq_lens_host}")
+        logger.info(
+            f"  prefill_attn_block_indices_host: {prefill_attn_block_indices_host}"
+        )
 
         # Perform h2d transfers.
         cb.end()
@@ -378,20 +393,25 @@ class GenerateState(BatchGenerateState):
         max_seq_length = 0
         attn_blocks_required = 0
 
+        logger.debug(f"set_decode_step(), block_pos_stride: {block_pos_stride}")
+
         for tok, seq in zip(tokens, self._sequences):
+            logger.debug(f"  looping, tok:\n  {tok}\nseq:\n  {seq}\n")
             seq.decode_token_ids.append(tok)
             seq.seq_length = seq.seq_length + 1
+            logger.debug(f"  seq.seq_length: {seq.seq_length}")
 
             max_seq_length = max(max_seq_length, seq.seq_length)
             block_count = seq.seq_length // block_pos_stride + 1
 
             seq.attn_blocks_needed = block_count
-            attn_blocks_required += block_count - seq.attn_blocks_available()
+            # attn_blocks_required += block_count - seq.attn_blocks_available()
+            attn_blocks_required = 1
             max_attn_blocks_length = max(max_attn_blocks_length, block_count)
 
         # Acquire the needed attention blocks in one batch so as to give the scheduler
         # the most visibility into the need.
-        logger.debug("Acquire decode attn blocks: %s", attn_blocks_required)
+        logger.debug("  acquire decode attn blocks: %s", attn_blocks_required)
         all_attn_blocks: list[AttnBlockCacheEntry] = []
         await service.cache.acquire_attn_blocks(attn_blocks_required, all_attn_blocks)
         block_index = 0
@@ -451,10 +471,13 @@ class GenerateState(BatchGenerateState):
         for i in range(len(sequences)):
             seq = sequences[i]
             attn_blocks = seq.attn_blocks
+            logger.debug(f"populate host buffers, seq[{i}]:\n  {seq}")
 
             tok = seq.decode_token_ids[0]
+            logger.debug(f"tok:\n  {tok}")
             seq_len = len(seq.current_token_ids)
-            print(seq.current_token_ids)
+            logger.debug(f"seq_len:\n  {seq_len}")
+            # print(seq.current_token_ids)
             seq.current_token_ids.append(tok)
             seq.decode_token_ids = seq.decode_token_ids[1:]
 
@@ -463,6 +486,14 @@ class GenerateState(BatchGenerateState):
             decode_seq_lens_host[i] = seq_len
             for j in range(len(seq.attn_blocks)):
                 decode_attn_block_indices_host[i, j] = attn_blocks[j].index
+
+        logger.info("decode")
+        logger.info(f"  decode_tokens_host: {decode_tokens_host}")
+        logger.info(f"  decode_start_pos_host: {decode_start_pos_host}")
+        logger.info(f"  decode_seq_lens_host: {decode_seq_lens_host}")
+        logger.info(
+            f"  decode_attn_block_indices_host: {decode_attn_block_indices_host}"
+        )
 
         # Perform h2d transfers.
         cb.end()
