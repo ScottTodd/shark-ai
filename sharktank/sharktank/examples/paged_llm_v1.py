@@ -50,8 +50,8 @@ class TorchGenerator:
         token_ids, seq_lens = self.tokenizer.encode(
             prompts, pad_to_multiple_of=self.model.cache.pad_sequence_stride
         )
-        token_ids = torch.tensor(token_ids, device=self.model.device)
-        seq_lens = torch.tensor(seq_lens, device=self.model.device)
+        token_ids = torch.tensor(token_ids, dtype=torch.int32, device=self.model.device)
+        seq_lens = torch.tensor(seq_lens, dtype=torch.int32, device=self.model.device)
         if self.shared_cache_state is not None:
             cache_state = self.shared_cache_state
         else:

@@ -60,9 +60,9 @@ class RotaryEmbeddingLayer(BaseLayer):
           Tensor of [bs, sl, 1, d] that will be later passed to apply_batch_mask.
         """
         self.trace_tensor("rope.start_positions", start_positions)
-        positions_seq = torch.arange(0, batch_seq_len, device=self.device).unsqueeze(
-            0
-        ) + start_positions.unsqueeze(1)
+        positions_seq = torch.arange(
+            0, batch_seq_len, dtype=torch.int32, device=self.device
+        ).unsqueeze(0) + start_positions.unsqueeze(1)
         # Broadcast lookup to [b, ...].
         self.trace_tensor("rope.positions_seq", positions_seq)
         freqs_cis = self._table[positions_seq]
@@ -99,9 +99,14 @@ class RotaryEmbeddingLayer(BaseLayer):
     ):
         freqs = 1.0 / (
             theta_value
-            ** (torch.arange(0, dim, 2, device=self.device)[: (dim // 2)].float() / dim)
+            ** (
+                torch.arange(0, dim, 2, dtype=torch.int32, device=self.device)[
+                    : (dim // 2)
+                ].float()
+                / dim
+            )
         )
-        t = torch.arange(max_seqlen, device=freqs.device)
+        t = torch.arange(max_seqlen, dtype=torch.int32, device=freqs.device)
         freqs = torch.outer(t, freqs).float()
         freqs_cis = torch.polar(torch.ones_like(freqs), freqs)
         return freqs_cis

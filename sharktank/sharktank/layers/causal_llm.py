@@ -85,7 +85,9 @@ class BaseCausalLMModel(ThetaLayer):
         The mask will be [bs, batch_seqlen] with True at any position that is
         masked.
         """
-        range_vector = torch.arange(0, batch_seqlen, 1, device=self.device)
+        range_vector = torch.arange(
+            0, batch_seqlen, 1, dtype=torch.int32, device=self.device
+        )
         matrix = torch.unsqueeze(seq_lens, dim=-1)
         mask = range_vector >= matrix
         return mask

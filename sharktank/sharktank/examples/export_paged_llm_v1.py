@@ -70,9 +70,9 @@ def main():
     fxb = FxProgramsBuilder(model)
 
     def generate_batch_prefill(bs: int):
-        tokens = torch.empty(bs, 64, dtype=torch.int64)
-        seq_lens = torch.empty(bs, dtype=torch.int64)
-        seq_block_ids = torch.empty(bs, 4, dtype=torch.int64)
+        tokens = torch.empty(bs, 64, dtype=torch.int32)
+        seq_lens = torch.empty(bs, dtype=torch.int32)
+        seq_block_ids = torch.empty(bs, 4, dtype=torch.int32)
         block_dim = torch.export.Dim("block", max=2047 // 16)
         sl_dim = 16 * block_dim
 
@@ -116,10 +116,10 @@ def main():
             return logits
 
     def generate_batch_decode(bs: int):
-        tokens = torch.ones(bs, 1, dtype=torch.int64)
-        seq_lens = torch.ones(bs, dtype=torch.int64)
-        start_positions = torch.ones(bs, dtype=torch.int64)
-        seq_block_ids = torch.zeros(bs, 4, dtype=torch.int64)
+        tokens = torch.ones(bs, 1, dtype=torch.int32)
+        seq_lens = torch.ones(bs, dtype=torch.int32)
+        start_positions = torch.ones(bs, dtype=torch.int32)
+        seq_block_ids = torch.zeros(bs, 4, dtype=torch.int32)
         block_dim = torch.export.Dim("block", max=2047 // 16)
 
         if model.config.kv_cache_type == "paged":

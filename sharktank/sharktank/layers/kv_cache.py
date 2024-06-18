@@ -303,8 +303,10 @@ class PagedKVCache(BaseKVCache):
                 cache_partition = cache_partitions[partition_index]
                 indices = (
                     page_id,
-                    torch.tensor([transformer_block_index], device=device),
-                    torch.tensor([partition_index], device=device),
+                    torch.tensor(
+                        [transformer_block_index], dtype=torch.int32, device=device
+                    ),
+                    torch.tensor([partition_index], dtype=torch.int32, device=device),
                     page_offset.unsqueeze(0),
                 )
                 page_table.index_put_(indices=indices, values=cache_partition[i, 0])
