@@ -81,13 +81,16 @@ async def main(argv):
     tokenizer = LlamaTokenizer.from_pretrained(hf_path)
     state = service.start()
 
-    for line in ["one two three four five six seven eight"]:
+    # for line in ["one two three four five six seven eight"]:
+    for line in ["one two three"]:
         prompt = line.strip()
         if not prompt:
             break
 
+        print(f"prompt: {prompt}")
+
         input_ids = tokenizer.encode(prompt, return_tensors="pt")[0].tolist()
-        print(input_ids)
+        print(f"input_ids: {input_ids}")
         request = GenerateRequest("request_id", prompt, input_ids)
         await state.set_sequences([request])
         logits = await state.prefill()
@@ -98,11 +101,14 @@ async def main(argv):
         predicted_token = predicted_tokens[-1]
         print(f"Predicted token: {predicted_token}")
 
-        # TODO Determine why decode step crashes
-        # await state.set_decode_step([predicted_token])
-        # logits = await state.decode()
-        # mapped_logits = map_buffer(logits)
-        # print(numpy.argmax(mapped_logits, axis=-1))
+        await state.set_decode_step([predicted_token])
+        logits = await state.decode()
+        print(f"Logits from decode(): {logits}")
+        mapped_logits = map_buffer(logits.value)
+        argmax_mapped_logits = numpy.argmax(mapped_logits, axis=-1)
+        print(argmax_mapped_logits)
+        response = tokenizer.decode(argmax_mapped_logits[0])
+        print(response)
         await state.recycle()
 
     service.shutdown()

@@ -250,6 +250,7 @@ class GenerateState(BatchGenerateState):
         for req in requests:
             bs += 1
             seq = _Sequence(req)
+            print(f"set_sequences appending: {seq}")
             sequences.append(seq)
             seq.current_token_ids = req.required_prompt_token_ids
             seq_length = len(seq.current_token_ids)
@@ -284,6 +285,7 @@ class GenerateState(BatchGenerateState):
             block_index += next_block_count
 
         # Save state.
+        # self._sequences = sequences
         self._bs = allowed_bs
         self._max_attn_blocks_length = max_attn_blocks_length
         self._max_seq_length = max_seq_length
@@ -381,6 +383,7 @@ class GenerateState(BatchGenerateState):
         attn_blocks_required = 0
 
         for tok, seq in zip(tokens, self._sequences):
+            print("appending a decode token:", tok)
             seq.decode_token_ids.append(tok)
             seq.seq_length = seq.seq_length + 1
 
@@ -405,6 +408,7 @@ class GenerateState(BatchGenerateState):
             block_index += next_block_count
 
         # Save state.
+        # self._sequences = sequences
         self._max_attn_blocks_length = max_attn_blocks_length
         self._max_seq_length = max_seq_length
 
@@ -421,7 +425,10 @@ class GenerateState(BatchGenerateState):
         cb = HalCommandBuffer(hc.session.device)
 
         # decode_tokens: array([bs, 1], np.int32)
-        (decode_tokens_host, decode_tokens_device,) = resources.acquire_transfer_buffer(
+        (
+            decode_tokens_host,
+            decode_tokens_device,
+        ) = resources.acquire_transfer_buffer(
             service.decode_tokens_pool
         ).h2d_array(cb, [bs, 1], HalElementType.SINT_64, fill_value=0)
 
@@ -453,6 +460,8 @@ class GenerateState(BatchGenerateState):
         for i in range(len(sequences)):
             seq = sequences[i]
             attn_blocks = seq.attn_blocks
+
+            print("seq.decode_token_ids:", seq.decode_token_ids)
 
             tok = seq.decode_token_ids[0]
             seq_len = len(seq.current_token_ids)
