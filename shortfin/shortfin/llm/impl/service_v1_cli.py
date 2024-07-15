@@ -78,7 +78,7 @@ async def main(argv):
     gguf_path = parsed.gguf
 
     service = setup(vmfb_path, config_path, gguf_path)
-    tokenizer = LlamaTokenizer.from_pretrained(hf_path)
+    tokenizer = LlamaTokenizer.from_pretrained(hf_path, legacy=False)
     state = service.start()
 
     for line in ["one two three four five six seven eight"]:

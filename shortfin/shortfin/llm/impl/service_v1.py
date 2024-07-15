@@ -47,6 +47,40 @@ logger = get_logger("shortfin.llm.impl.service_v1")
 EXPECTED_CONCURRENCY = 10
 
 
+from pathlib import Path
+import struct
+import numpy as np
+
+# map numpy dtype -> (iree dtype, struct.pack format str)
+dtype_map = {
+    np.dtype("int64"): ("si64", "q"),
+    np.dtype("uint64"): ("ui64", "Q"),
+    np.dtype("int32"): ("si32", "i"),
+    np.dtype("uint32"): ("ui32", "I"),
+    np.dtype("int16"): ("si16", "h"),
+    np.dtype("uint16"): ("ui16", "H"),
+    np.dtype("int8"): ("si8", "b"),
+    np.dtype("uint8"): ("ui8", "B"),
+    np.dtype("float64"): ("f64", "d"),
+    np.dtype("float32"): ("f32", "f"),
+    np.dtype("float16"): ("f16", "e"),
+    np.dtype("bool"): ("i1", "?"),
+}
+
+
+def pack_np_ndarray(ndarray: np.ndarray):
+    mylist = ndarray.flatten().tolist()
+    dtype = ndarray.dtype
+    assert dtype in dtype_map
+    return struct.pack(f"{len(mylist)}{dtype_map[dtype][1]}", *mylist)
+
+
+def write_ndarray_to_bin(ndarray: np.ndarray, file: Path):
+    with open(file, "wb") as f:
+        packed_ndarray = pack_np_ndarray(ndarray)
+        f.write(packed_ndarray)
+
+
 class GenerateServiceV1(BatchGenerateService):
     def __init__(
         self, *, session: DeviceSession, params: ServiceParams, cache: AttnBlockCache
@@ -219,6 +253,9 @@ class GenerateState(BatchGenerateState):
         self._sequences: list[_Sequence] = []
         self._batch_queue = WorkQueue(service.session)
 
+        self.debug_dir = Path("/tmp/shortfin/service_data")
+        self.debug_dir.mkdir(parents=True, exist_ok=True)
+
     async def recycle(self):
         """Recycles or releases all resources consumed by this instance."""
         cache = self._service.cache
@@ -356,6 +393,15 @@ class GenerateState(BatchGenerateState):
         inputs.push_ref(prefill_attn_block_indices_device)
         inputs.push_ref(service.cache.attn_block_buffer_view)
 
+        # TODO(scotttodd): only run this if debugging flag set
+        #     inject debug code somehow? flags? env var?
+        #     one subfolder per invocation?
+        write_ndarray_to_bin(prefill_tokens_host, self.debug_dir / "input_0.bin")
+        write_ndarray_to_bin(prefill_seq_lens_host, self.debug_dir / "input_1.bin")
+        write_ndarray_to_bin(
+            prefill_attn_block_indices_host, self.debug_dir / "input_2.bin"
+        )
+
         # Outputs:
         #   attn_block_buffer_view (tied output)
         #   decode_tokens
@@ -465,6 +511,8 @@ class GenerateState(BatchGenerateState):
             decode_seq_lens_host[i] = seq_len
             for j in range(len(seq.attn_blocks)):
                 decode_attn_block_indices_host[i, j] = attn_blocks[j].index
+
+        # TODO(scotttodd): dump host buffers to files for debugging here too
 
         # Perform h2d transfers.
         cb.end()
