@@ -14,7 +14,7 @@ on:
 
 jobs:
   build_packages:
-    name: "${{ matrix.build-family }} :: Build ${{ matrix.package }} Package"
+    name: "${{ matrix.build-family }} :: Build ${{ matrix.package }} Package for ${{ matrix.python-version }}"
     runs-on: ${{ matrix.runs-on }}
     strategy:
       fail-fast: false
@@ -24,6 +24,11 @@ jobs:
           - runs-on: ubuntu-24.04
             build-family: linux-x86_64
             package: shortfin
+            python-version: cp312-cp312
+          - runs-on: ubuntu-24.04
+            build-family: linux-x86_64
+            package: shortfin
+            python-version: cp313-cp313
           # TODO(#130): macOS
           # TODO(#130): Windows
 
@@ -35,11 +40,12 @@ jobs:
         submodules: false
 
 
-    - name: Build shortfin (Linux x86_64)
+    - name: Build shortfin (Linux x86_64, ${{ matrix.python-version }})
       if: "matrix.package == 'shortfin' && matrix.build-family == 'linux-x86_64'"
       shell: bash
       env:
-        output_dir: "${{ github.workspace }}/bindist"
+        OUTPUT_DIR: "${{ github.workspace }}/bindist"
+        OVERRIDE_PYTHON_VERSIONS: "${{ matrix.python-version }}"
       run: |
         [ -e ./bindist/* ] && rm ./bindist/*
         ./c/shortfin/build_tools/build_linux_package.sh
