@@ -26,5 +26,7 @@ concurrency:
 
 jobs:
   build_packages:
+    # permissions:
+    #   contents: write
     name: Build Packages
     uses: ./.github/workflows/pkgci_build_packages.yml

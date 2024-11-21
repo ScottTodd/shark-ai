@@ -15,8 +15,8 @@ permissions:
 jobs:
   build_packages:
     runs-on: ubuntu-24.04
-    permissions:
-      contents: write
+    # permissions:
+    #   contents: write
     needs: [setup_metadata]
     env:
       OUTPUT_DIR: "${{ github.workspace }}/bindist"
