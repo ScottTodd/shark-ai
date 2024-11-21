@@ -47,6 +47,7 @@ jobs:
     - name: Build shortfin
       env:
         OVERRIDE_PYTHON_VERSIONS: cp311-cp311
+        SHORTFIN_ENABLE_TRACING: "OFF"
       run: |
         ./shortfin/build_tools/build_linux_package.sh
     - name: Build shark-ai

@@ -44,6 +44,7 @@ ARCH="$(uname -m)"
 MANYLINUX_DOCKER_IMAGE="${MANYLINUX_DOCKER_IMAGE:-quay.io/pypa/manylinux2014_${ARCH}:latest}"
 PYTHON_VERSIONS="${OVERRIDE_PYTHON_VERSIONS:-cp311-cp311 cp312-cp312 cp313-cp313}"
 OUTPUT_DIR="${OUTPUT_DIR:-${THIS_DIR}/wheelhouse}"
+SHORTFIN_ENABLE_TRACING="${SHORTFIN_ENABLE_TRACING:-ON}"
 
 function run_on_host() {
   echo "Running on host"
