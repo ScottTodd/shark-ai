@@ -43,16 +43,16 @@ jobs:
     # Build dev packages.
     - name: Build sharktank
       run: |
-        ./c/sharktank/build_tools/build_linux_package.sh
+        ./sharktank/build_tools/build_linux_package.sh
     - name: Build shortfin
       env:
         OVERRIDE_PYTHON_VERSIONS: cp311-cp311
       run: |
-        ./c/shortfin/build_tools/build_linux_package.sh
+        ./shortfin/build_tools/build_linux_package.sh
     - name: Build shark-ai
       run: |
-        ./c/build_tools/python_deploy/write_requirements.py --version-suffix=${version_suffix}
-        ./c/shark-ai/build_tools/build_linux_package.sh
+        ./build_tools/python_deploy/write_requirements.py --version-suffix=${version_suffix}
+        ./shark-ai/build_tools/build_linux_package.sh
 
     # Upload.
     - name: Upload python wheels
