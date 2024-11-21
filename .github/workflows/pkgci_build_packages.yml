@@ -14,7 +14,6 @@ permissions:
 
 jobs:
   build_packages:
-    name: "${{ matrix.package }} :: ${{ matrix.platform }} :: ${{ matrix.python-version }}"
     runs-on: ubuntu-24.04
     permissions:
       contents: write
