@@ -14,9 +14,10 @@
 # Build everything (all python versions):
 #   sudo ./build_tools/build_linux_package.sh
 #
-# Build specific Python versions to custom directory:
+# Build specific Python versions to custom directory, with tracing enabled:
 #   OVERRIDE_PYTHON_VERSIONS="cp312-cp312 cp313-cp313" \
 #   OUTPUT_DIR="/tmp/wheelhouse" \
+#   SHORTFIN_ENABLE_TRACING="ON" \
 #   sudo -E ./build_tools/build_linux_package.sh
 #
 # Valid Python versions match a subdirectory under /opt/python in the docker
@@ -59,6 +60,7 @@ function run_on_host() {
     -e __MANYLINUX_BUILD_WHEELS_IN_DOCKER=1 \
     -e "OVERRIDE_PYTHON_VERSIONS=${PYTHON_VERSIONS}" \
     -e "OUTPUT_DIR=${OUTPUT_DIR}" \
+    -e "SHORTFIN_ENABLE_TRACING=${SHORTFIN_ENABLE_TRACING}" \
     "${MANYLINUX_DOCKER_IMAGE}" \
     -- ${THIS_DIR}/${SCRIPT_NAME}
 
@@ -92,7 +94,8 @@ function run_in_docker() {
 }
 
 function build_shortfin() {
-  export SHORTFIN_ENABLE_TRACING=ON
+  # Note: The SHORTFIN_ENABLE_TRACING environment variable should have been
+  # forwarded from the host environment into Docker above.
   python -m pip wheel --disable-pip-version-check -v -w "${OUTPUT_DIR}" "${REPO_ROOT}/shortfin"
 }
 
