@@ -44,6 +44,7 @@ ARCH="$(uname -m)"
 MANYLINUX_DOCKER_IMAGE="${MANYLINUX_DOCKER_IMAGE:-quay.io/pypa/manylinux2014_${ARCH}:latest}"
 PYTHON_VERSIONS="${OVERRIDE_PYTHON_VERSIONS:-cp311-cp311 cp312-cp312 cp313-cp313}"
 OUTPUT_DIR="${OUTPUT_DIR:-${THIS_DIR}/wheelhouse}"
+CACHE_DIR="${CACHE_DIR:-}"
 SHORTFIN_ENABLE_TRACING="${SHORTFIN_ENABLE_TRACING:-ON}"
 
 function run_on_host() {
@@ -55,6 +56,15 @@ function run_on_host() {
   OUTPUT_DIR="$(cd "${OUTPUT_DIR}" && pwd)"
   echo "Outputting to ${OUTPUT_DIR}"
   mkdir -p "${OUTPUT_DIR}"
+
+  # Setup cache as needed.
+  extra_args=""
+  if ! [ -z "$CACHE_DIR" ]; then
+    echo "Setting up host cache dir ${CACHE_DIR}"
+    mkdir -p "${CACHE_DIR}/ccache"
+    extra_args="${extra_args} -v ${CACHE_DIR}:${CACHE_DIR} -e CACHE_DIR=${CACHE_DIR}"
+  fi
+
   docker run --rm \
     -v "${REPO_ROOT}:${REPO_ROOT}" \
     -v "${OUTPUT_DIR}:${OUTPUT_DIR}" \
@@ -62,6 +72,7 @@ function run_on_host() {
     -e "OVERRIDE_PYTHON_VERSIONS=${PYTHON_VERSIONS}" \
     -e "OUTPUT_DIR=${OUTPUT_DIR}" \
     -e "SHORTFIN_ENABLE_TRACING=${SHORTFIN_ENABLE_TRACING}" \
+    ${extra_args} \
     "${MANYLINUX_DOCKER_IMAGE}" \
     -- ${THIS_DIR}/${SCRIPT_NAME}
 
@@ -78,6 +89,19 @@ function run_in_docker() {
   echo "Using python versions: ${PYTHON_VERSIONS}"
   local orig_path="${PATH}"
 
+  # Configure caching.
+  if [ -z "$CACHE_DIR" ]; then
+    echo "Cache directory not configured. No caching will take place."
+  else
+    mkdir -p "${CACHE_DIR}"
+    CACHE_DIR="$(cd ${CACHE_DIR} && pwd)"
+    echo "Caching build artifacts to ${CACHE_DIR}"
+    export CCACHE_DIR="${CACHE_DIR}/ccache"
+    export CCACHE_MAXSIZE="2G"
+    export CMAKE_C_COMPILER_LAUNCHER=ccache
+    export CMAKE_CXX_COMPILER_LAUNCHER=ccache
+  fi
+
   # Build phase.
   echo "******************** BUILDING PACKAGE ********************"
   for python_version in ${PYTHON_VERSIONS}; do
@@ -88,9 +112,18 @@ function run_in_docker() {
     fi
     export PATH="${python_dir}/bin:${orig_path}"
     echo ":::: Python version $(python --version)"
+
     clean_wheels "shortfin" "${python_version}"
     build_shortfin
     run_audit_wheel "shortfin" "${python_version}"
+
+    echo "******************** BUILD COMPLETE ********************"
+    echo "Generated binaries:"
+    ls -l "${OUTPUT_DIR}"
+    if ! [ -z "$CACHE_DIR" ]; then
+      echo "ccache stats:"
+      ccache --show-stats
+    fi
   done
 }
 

@@ -18,6 +18,7 @@ jobs:
     # permissions:
     #   contents: write
     env:
+      CACHE_DIR: ${{ github.workspace }}/.shark-ai-cache
       OUTPUT_DIR: "${{ github.workspace }}/bindist"
 
     steps:
@@ -31,7 +32,7 @@ jobs:
     # Setup metadata.
     - name: Install Python packages
       run: pip install packaging
-    - name: Generate release candidate versions
+    - name: Generate dev package versions
       id: version_rc
       run: |
         version_suffix=".dev+${{ github.sha }}"
@@ -39,6 +40,14 @@ jobs:
         sharktank_package_version=$(python3 build_tools/python_deploy/compute_local_version.py --version-suffix=${version_suffix} sharktank)
         shortfin_package_version=$(python3 build_tools/python_deploy/compute_local_version.py --version-suffix=${version_suffix} shortfin)
         sharkai_package_version=$(python3 build_tools/python_deploy/compute_common_version.py -rc --version-suffix=${version_suffix} --write-json)
+
+    - name: Enable cache
+      uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
+      with:
+        path: ${{ env.CACHE_DIR }}
+        key: shark-ai-pkgci-linux-packages-x86_64-v1-${{ github.sha }}
+        restore-keys: |
+          shark-ai-pkgci-linux-packages-x86_64-v1-
 
     # Build dev packages.
     - name: Build sharktank
@@ -54,6 +63,12 @@ jobs:
       run: |
         ./build_tools/python_deploy/write_requirements.py --version-suffix=${version_suffix}
         ./shark-ai/build_tools/build_linux_package.sh
+
+    # - name: Fix cache dir permissions
+    #   run: |
+    #       # Some things put stuff in cache with weird, root read-only
+    #       # permissions. Take them back.
+    #       sudo chown -R "$(whoami)" "${{ env.CACHE_DIR }}"
 
     # Upload.
     - name: Upload python wheels
