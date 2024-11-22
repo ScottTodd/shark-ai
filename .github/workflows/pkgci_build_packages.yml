@@ -64,12 +64,6 @@ jobs:
         ./build_tools/python_deploy/write_requirements.py --version-suffix=${version_suffix}
         ./shark-ai/build_tools/build_linux_package.sh
 
-    - name: Fix cache dir permissions
-      run: |
-          # Some things put stuff in cache with weird, root read-only
-          # permissions. Take them back.
-          sudo chown -R "$(whoami)" "${{ env.CACHE_DIR }}"
-
     # Upload.
     - name: Upload python wheels
       uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
