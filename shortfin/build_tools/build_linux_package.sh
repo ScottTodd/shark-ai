@@ -120,9 +120,6 @@ function run_in_docker() {
     build_shortfin
     run_audit_wheel "shortfin" "${python_version}"
 
-    echo "******************** BUILD COMPLETE ********************"
-    echo "Generated binaries:"
-    ls -l "${OUTPUT_DIR}"
     if ! [ -z "$CACHE_DIR" ]; then
       echo "ccache stats:"
       ccache --show-stats
