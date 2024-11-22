@@ -89,6 +89,9 @@ function run_in_docker() {
   echo "Using python versions: ${PYTHON_VERSIONS}"
   local orig_path="${PATH}"
 
+  # TODO: include this in the dockerfile we use so it gets cached
+  yum install -y ccache
+
   # Configure caching.
   if [ -z "$CACHE_DIR" ]; then
     echo "Cache directory not configured. No caching will take place."
