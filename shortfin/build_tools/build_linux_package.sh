@@ -90,7 +90,7 @@ function run_in_docker() {
   local orig_path="${PATH}"
 
   # TODO: include this in the dockerfile we use so it gets cached
-  yum install -y ccache
+  install_ccache
 
   # Configure caching.
   if [ -z "$CACHE_DIR" ]; then
@@ -125,6 +125,29 @@ function run_in_docker() {
       ccache --show-stats
     fi
   done
+}
+
+function install_ccache() {
+  # This gets an old version.
+  # yum install -y ccache
+
+  CCACHE_VERSION="4.10.2"
+
+  if [[ "${ARCH}" == "x86_64" ]]; then
+    curl --silent --fail --show-error --location \
+        "https://github.com/ccache/ccache/releases/download/v${CCACHE_VERSION}/ccache-${CCACHE_VERSION}-linux-${ARCH}.tar.xz" \
+        --output ccache.tar.xz
+
+    tar xf ccache.tar.xz
+    cp ccache-${CCACHE_VERSION}-linux-${ARCH}/ccache /usr/local/bin
+  elif [[ "${ARCH}" == "aarch64" ]]; then
+    # Latest version of ccache is not released for arm64, built it
+    git clone --depth 1 --branch "v${CCACHE_VERSION}" https://github.com/ccache/ccache.git
+    mkdir -p ccache/build && cd "$_"
+    cmake -G "Ninja" -DCMAKE_BUILD_TYPE=Release ..
+    ninja
+    cp ccache /usr/bin/
+  fi
 }
 
 function build_shortfin() {
