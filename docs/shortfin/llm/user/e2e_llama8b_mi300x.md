@@ -6,6 +6,8 @@ We will use an example with `llama_8b_f16` in order to describe the
 process of exporting a model for use in the shortfin llm server with an
 MI300 GPU.
 
+<!-- TODO: generalize, only one line here is MI300 specific (`--iree-hip-target=gfx942`) -->
+
 ### Pre-Requisites
 
 - Python >= 3.11 is recommended for this flow
@@ -53,12 +55,36 @@ pip install dataclasses-json
 Create a new directory for us to export files like
 `model.mlir`, `model.vmfb`, etc.
 
+<!-- TODO: don't write into the source directory unless .gitignore'd -->
+<!-- `mkdir -p ~/shark-ai/llama` maybe, or have tools use a default -->
+
 ```bash
 mkdir $PWD/export
 export EXPORT_DIR=$PWD/export
 ```
 
 ### Download llama3_8b_fp16.gguf
+
+<!-- TODO: remove usage of 'utils' -->
+<!--   A: use upstream huggingface-cli or huggingface_hub library -->
+<!--   B: add build tool to replace export_paged_llm_v1 that downloads, exports, and compiles
+          https://github.com/nod-ai/shark-ai/issues/402 -->
+
+<!-- TODO: use standard repo/model names like `SanctumAI/Meta-Llama-3.1-8B-Instruct-GGUF` or `meta-llama/Llama-3.1-8B-Instruct`
+
+    TensorRT:
+    * https://nvidia.github.io/TensorRT-LLM/quick-start-guide.html
+    * https://nvidia.github.io/TensorRT-LLM/commands/trtllm-serve.html
+
+    VLLM:
+    * https://docs.vllm.ai/en/latest/getting_started/quickstart.html
+
+    MLC LLM:
+    * https://github.com/bentoml/BentoMLCLLM?tab=readme-ov-file#set-up-the-environment
+    * https://llm.mlc.ai/docs/compilation/compile_models.html#clone-from-hf-and-convert-weight
+    * https://llm.mlc.ai/docs/get_started/introduction.html#chat-cli
+-->
+
 
 We will use the `hf_datasets` module in `sharktank` to download a
 LLama3.1 8b f16 model.
@@ -83,6 +109,8 @@ export TOKENIZER_PATH=$EXPORT_DIR/llama3.1-8b/tokenizer.json
 ```
 
 #### General env vars
+
+<!-- TODO: give these defaults / script arguments, no need to set like this -->
 
 The following env vars can be copy + pasted directly:
 
@@ -116,6 +144,8 @@ python -m sharktank.examples.export_paged_llm_v1 \
 
 ## Compiling to `.vmfb`
 
+<!-- TODO: bundle this as part of a tool, with precompiled vs compile modes, cache support -->
+
 Now that we have generated a `model.mlir` file,
 we can compile it to `.vmfb` format, which is required for running
 the `shortfin` LLM server.
@@ -125,6 +155,8 @@ We will use the
 tool for compiling our model.
 
 ### Compile for MI300
+
+<!-- TODO: detect available devices and default to the current system (including multi-device sharding) -->
 
 **NOTE: This command is specific to MI300 GPUs.
 For other `--iree-hip-target` GPU options,
@@ -174,6 +206,8 @@ We should now have all of the files that we need to run the shortfin LLM server.
 
 Verify that you have the following in your specified directory ($EXPORT_DIR):
 
+<!-- TODO: have required arguments on the server / check for files on startup, keep the docs streamlined  -->
+
 ```bash
 ls $EXPORT_DIR
 ```
@@ -182,6 +216,12 @@ ls $EXPORT_DIR
 - model.vmfb
 
 ### Launch server:
+
+<!-- TODO: OpenAI API compatible server, not this custom one?
+
+    https://nvidia.github.io/TensorRT-LLM/commands/trtllm-serve.html
+    https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html
+-->
 
 <!-- #### Set the target device
 
@@ -193,6 +233,8 @@ when `--device=hip://$DEVICE` is supported -->
 Now that we are finished with setup, we can start the Shortfin LLM Server.
 
 Run the following command to launch the Shortfin LLM Server in the background:
+
+<!-- TODO: move this troubleshooting into the error message, get this off of the golden path in the docs -->
 
 > **Note**
 > By default, our server will start at `http://localhost:8000`.
@@ -216,6 +258,8 @@ python -m shortfin_apps.llm.server \
 shortfin_process=$!
 ```
 
+<!-- TODO: have the server write its logs to a file by default if spammy? use stdout/stderr for control messages -->
+
 You can verify your command has launched successfully
 when you see the following logs outputted to terminal:
 
@@ -233,6 +277,16 @@ cat shortfin_llm_server.log
 ## Verify server
 
 We can now verify our LLM server by sending a simple request:
+
+<!-- TODO: wrap this into a script,
+
+    shortfin_apps.llm.client --query="" --max-completion-tokens=""
+
+    or use 'curl'? like at
+    https://pytorch.org/serve/batch_inference_with_ts.html
+    https://llm.mlc.ai/docs/get_started/introduction.html#rest-server
+    https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html#example-of-usage-for-a-pair-of-a-string-and-a-list-of-texts
+-->
 
 ### Open python shell
 
@@ -270,6 +324,8 @@ quit()
 ```
 
 ## Cleanup
+
+<!-- TODO: better cleanup https://github.com/nod-ai/shark-ai/issues/490 -->
 
 When done, you can kill the shortfin_llm_server by killing the process:
 
